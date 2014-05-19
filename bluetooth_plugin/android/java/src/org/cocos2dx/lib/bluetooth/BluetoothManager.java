@@ -67,7 +67,7 @@ public class BluetoothManager extends Cocos2dxActivity {
 
     private static Activity mContext;
     
-    public static native void nativeCalledFromBluetoothManager(long delegate, int request, int result, String peerID, String message);
+    public static native void nativeCalledFromBluetoothManager(long delegate, int result, int status, String error, String peerID, String message);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -115,91 +115,99 @@ public class BluetoothManager extends Cocos2dxActivity {
 
 	public static void start(String peerID, String message) {
         Log.d(TAG, "start()");
-        Log.d(TAG, " > peerID: " + peerID);
-        Log.d(TAG, " > message: " + message);
-
-        // Get local Bluetooth adapter
-        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-
-        // If the adapter is null, then Bluetooth is not supported
-        if (mBluetoothAdapter == null) {
-            Toast.makeText(mContext, "Bluetooth is not available", Toast.LENGTH_LONG).show();
-            return;
-        }
-
+	    Log.d(TAG, " > peerID: " + peerID);
+   		Log.d(TAG, " > message: " + message);
+	
 		mPeerID = peerID;
 		mMessage = message;
+	
+		mContext.runOnUiThread(new Runnable() {
+			public void run() {
+        		// Get local Bluetooth adapter
+        		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
-    	mBluetoothName = mBluetoothAdapter.getName();
-    	if (mBluetoothName == null) mBluetoothName = android.os.Build.MODEL;
-    	if (!mBluetoothName.startsWith(BluetoothService.NAME_INSECURE)) {
-        	mBluetoothName = BluetoothService.NAME_INSECURE + ":" + mBluetoothName;
-    		mBluetoothAdapter.setName(mBluetoothName);
-    	}
+        		// If the adapter is null, then Bluetooth is not supported
+        		if (mBluetoothAdapter == null) {
+            		Toast.makeText(mContext, "Bluetooth is not available", Toast.LENGTH_LONG).show();
+            		return;
+        		}
 
-        // Register for broadcasts when a device is discovered
-        IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
-        mContext.registerReceiver(mReceiver, filter);
+    			mBluetoothName = mBluetoothAdapter.getName();
+    			if (mBluetoothName == null) mBluetoothName = android.os.Build.MODEL;
+    			if (!mBluetoothName.startsWith(BluetoothService.NAME_INSECURE)) {
+        			mBluetoothName = BluetoothService.NAME_INSECURE + ":" + mBluetoothName;
+    				mBluetoothAdapter.setName(mBluetoothName);
+    			}
 
-        // Register for broadcasts when discovery has finished
-        filter = new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
-        mContext.registerReceiver(mReceiver, filter);
+		        // Register for broadcasts when a device is discovered
+    		    IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+        		mContext.registerReceiver(mReceiver, filter);
 
-        // Get the local Bluetooth adapter
-        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        		// Register for broadcasts when discovery has finished
+        		filter = new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
+        		mContext.registerReceiver(mReceiver, filter);
 
-        // If BT is not on, request that it be enabled.
-        // setupChat() will then be called during onActivityResult
-        if (!mBluetoothAdapter.isEnabled()) {
-            Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            mContext.startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
-        // Otherwise, setup the chat session
-        } else {
-            if (mBluetoothService == null) setupChat();
-        }
+        		// Get the local Bluetooth adapter
+        		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
-        // Performing this check in onResume() covers the case in which BT was
-        // not enabled during onStart(), so we were paused to enable it...
-        // onResume() will be called when ACTION_REQUEST_ENABLE activity returns.
-        if (mBluetoothService != null) {
-            // Only if the state is STATE_NONE, do we know that we haven't started already
-            if (mBluetoothService.getState() == BluetoothService.STATE_NONE) {
-              // Start the Bluetooth chat services
-              mBluetoothService.start();
-              if(D) Log.e(TAG, "= mBluetoothService.start() =");
-            }
-        }
+        		// If BT is not on, request that it be enabled.
+        		// setupService() will then be called during onActivityResult
+        		if (!mBluetoothAdapter.isEnabled()) {
+            		Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            		mContext.startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
+        		// Otherwise, setup the chat session
+        		} else {
+            		if (mBluetoothService == null) setupService();
+        		}
 
-        ensureDiscoverable(300);
+        		// Performing this check in onResume() covers the case in which BT was
+        		// not enabled during onStart(), so we were paused to enable it...
+        		// onResume() will be called when ACTION_REQUEST_ENABLE activity returns.
+        		if (mBluetoothService != null) {
+            		// Only if the state is STATE_NONE, do we know that we haven't started already
+            		if (mBluetoothService.getState() == BluetoothService.STATE_NONE) {
+              			// Start the Bluetooth chat services
+              			mBluetoothService.start();
+              			if(D) Log.e(TAG, "= mBluetoothService.start() =");
+           			}
+        		}
+
+	    	    ensureDiscoverable(300);
+			}
+		});
 	}
 	
 	public static void stop() {
-        Log.d(TAG, "stop()");
+		mContext.runOnUiThread(new Runnable() {
+			public void run() {
+		        Log.d(TAG, "stop()");
 
-        // Unregister broadcast listeners
-        mContext.unregisterReceiver(mReceiver);
+        		// Unregister broadcast listeners
+        		mContext.unregisterReceiver(mReceiver);
 
-        // Stop the Bluetooth chat services
-        if (mBluetoothService != null) {
-        	mBluetoothService.stop();
-        	mBluetoothService = null;
-        }
+        		// Stop the Bluetooth chat services
+        		if (mBluetoothService != null) {
+        			mBluetoothService.stop();
+        			mBluetoothService = null;
+        		}
 
-        // Make sure we're not doing discovery anymore
-        if (mBluetoothAdapter != null) {
-            mBluetoothAdapter.cancelDiscovery();
+        		// Make sure we're not doing discovery anymore
+        		if (mBluetoothAdapter != null) {
+            		mBluetoothAdapter.cancelDiscovery();
 
-	        if (mBluetoothName != null) {
-		    	mBluetoothAdapter.setName(mBluetoothName);
-	    		mBluetoothName = null;
-        	}
+	        		if (mBluetoothName != null) {
+		    			mBluetoothAdapter.setName(mBluetoothName);
+	    				mBluetoothName = null;
+        			}
 
-            mBluetoothAdapter = null;
-        }
+		            mBluetoothAdapter = null;
+        		}
+			}
+		});
 	}
 
-    private static void setupChat() {
-        Log.d(TAG, "setupChat()");
+    private static void setupService() {
+        Log.d(TAG, "setupService()");
 
         // Initialize the BluetoothService to perform bluetooth connections
         mBluetoothService = new BluetoothService(mContext, mHandler);
@@ -276,8 +284,10 @@ public class BluetoothManager extends Cocos2dxActivity {
                 			peerID = readMessage.substring(0, readMessage.indexOf(':'));
                 			message = readMessage.substring(readMessage.indexOf(':')+1);
                 		}
+
+		               	String error = "";
                 
-	    				BluetoothManager.nativeCalledFromBluetoothManager(mDelegate, RESULT_RECEIVE_MESSAGE, STATUS_OK, "", peerID, message);
+	    				BluetoothManager.nativeCalledFromBluetoothManager(mDelegate, RESULT_RECEIVE_MESSAGE, STATUS_OK, error, peerID, message);
 					}
 				});
                 break;
@@ -302,7 +312,7 @@ public class BluetoothManager extends Cocos2dxActivity {
             // When the request to enable Bluetooth returns
             if (resultCode == Activity.RESULT_OK) {
                 // Bluetooth is now enabled, so set up a chat session
-                setupChat();
+                setupService();
             } else {
                 // User did not enable Bluetooth or an error occured
                 Log.d(TAG, "BT not enabled");
@@ -385,7 +395,11 @@ public class BluetoothManager extends Cocos2dxActivity {
             	}
             // When discovery is finished, change the Activity title
             } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
-				BluetoothManager.nativeCalledFromBluetoothManager(mDelegate, RESULT_NOTFOUND_PEER, STATUS_ERROR, "ACTION_DISCOVERY_FINISHED", "", "");
+              	String peerID = "";
+              	String message = "";
+              	String error = "ACTION_DISCOVERY_FINISHED";
+
+				BluetoothManager.nativeCalledFromBluetoothManager(mDelegate, RESULT_NOTFOUND_PEER, STATUS_ERROR, error, peerID, message);
             }
         }
     };

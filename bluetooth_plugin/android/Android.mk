@@ -22,5 +22,3 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/../../cocos2dx \
 							$(LOCAL_PATH)/jni
                     
 include $(BUILD_STATIC_LIBRARY)
-
-$(call import-module,cocos2dx)
