@@ -3,7 +3,8 @@ cocos2dx_bluetooth_plugin
 
 第４回Cocos2d-x勉強会で発表したpluginのソースコードです。
 
-## Cocos2d-x x iBeacon (Bluetoothを使ったゲームを作ろう)
+## Cocos2d-x x iBeacon 
+* Bluetoothを使ったゲームを作ろう
 
 概要
 ---------
@@ -12,6 +13,7 @@ Cocos2d-xのゲームにBluetoothを利用したP2P機能を追加するプラ�
 まだ、接続時に固定のメッセージを送るだけの機能しかありません。
 
 今後は、リアルタイムバトルなどが可能なデータの送受信機能を追加していきたいと思います。
+
 
 リクエストなどがあればお知らせ下さい。
 
