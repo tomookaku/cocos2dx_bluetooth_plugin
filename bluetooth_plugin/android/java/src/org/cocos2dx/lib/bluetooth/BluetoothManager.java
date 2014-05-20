@@ -63,11 +63,9 @@ public class BluetoothManager extends Cocos2dxActivity {
 
     private static boolean mFound = false;
 
-    private static long mDelegate;
-
-    private static Activity mContext;
+    private static Activity mContext = null;
     
-    public static native void nativeCalledFromBluetoothManager(long delegate, int result, int status, String error, String peerID, String message);
+    public static native void nativeCalledFromBluetoothManager(int result, int status, String error, String peerID, String message);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -108,15 +106,10 @@ public class BluetoothManager extends Cocos2dxActivity {
 		stop();
     }
 
-	public static void setDelegate(final long delegate) {
-		mDelegate = delegate;
-        Log.d(TAG, "setDelegate()");
-	}
-
 	public static void start(String peerID, String message) {
-        Log.d(TAG, "start()");
-	    Log.d(TAG, " > peerID: " + peerID);
-   		Log.d(TAG, " > message: " + message);
+        if (D) Log.d(TAG, "start()");
+	    if (D) Log.d(TAG, " > peerID: " + peerID);
+   		if (D) Log.d(TAG, " > message: " + message);
 	
 		mPeerID = peerID;
 		mMessage = message;
@@ -180,7 +173,7 @@ public class BluetoothManager extends Cocos2dxActivity {
 	public static void stop() {
 		mContext.runOnUiThread(new Runnable() {
 			public void run() {
-		        Log.d(TAG, "stop()");
+		        if (D) Log.d(TAG, "stop()");
 
         		// Unregister broadcast listeners
         		mContext.unregisterReceiver(mReceiver);
@@ -207,7 +200,7 @@ public class BluetoothManager extends Cocos2dxActivity {
 	}
 
     private static void setupService() {
-        Log.d(TAG, "setupService()");
+        if (D) Log.d(TAG, "setupService()");
 
         // Initialize the BluetoothService to perform bluetooth connections
         mBluetoothService = new BluetoothService(mContext, mHandler);
@@ -287,7 +280,9 @@ public class BluetoothManager extends Cocos2dxActivity {
 
 		               	String error = "";
                 
-	    				BluetoothManager.nativeCalledFromBluetoothManager(mDelegate, RESULT_RECEIVE_MESSAGE, STATUS_OK, error, peerID, message);
+		                if (D) Log.d(TAG, "handleMessage MESSAGE_READ: nativeCalledFromBluetoothManager");
+
+	    				BluetoothManager.nativeCalledFromBluetoothManager(RESULT_RECEIVE_MESSAGE, STATUS_OK, error, peerID, message);
 					}
 				});
                 break;
@@ -373,12 +368,13 @@ public class BluetoothManager extends Cocos2dxActivity {
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
 
+            if (D) Log.d(TAG, "onReceive action: " + action);
+
             // When discovery finds a device
             if (BluetoothDevice.ACTION_FOUND.equals(action)) {
                 // Get the BluetoothDevice object from the Intent
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 
-                System.out.println("device: " + device.getName());
             	if (device.getName() != null 
             			&& device.getName().startsWith(BluetoothService.NAME_INSECURE) 
             			&&  device.getBondState() != BluetoothDevice.BOND_BONDED) {
@@ -395,11 +391,13 @@ public class BluetoothManager extends Cocos2dxActivity {
             	}
             // When discovery is finished, change the Activity title
             } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
+                if (D) Log.d(TAG, "onReceive ACTION_DISCOVERY_FINISHED: nativeCalledFromBluetoothManager");
+
               	String peerID = "";
               	String message = "";
               	String error = "ACTION_DISCOVERY_FINISHED";
 
-				BluetoothManager.nativeCalledFromBluetoothManager(mDelegate, RESULT_NOTFOUND_PEER, STATUS_ERROR, error, peerID, message);
+				BluetoothManager.nativeCalledFromBluetoothManager(RESULT_NOTFOUND_PEER, STATUS_ERROR, error, peerID, message);
             }
         }
     };

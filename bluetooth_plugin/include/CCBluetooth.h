@@ -31,9 +31,6 @@ namespace bluetooth_plugin {
         void start(const char *peerID, const char *message);
         void stop();
         
-    private:
-        CCBluetoothDelegate* _delegate;
-        
     };
     
 } // End of namespace bluetooth_plugin

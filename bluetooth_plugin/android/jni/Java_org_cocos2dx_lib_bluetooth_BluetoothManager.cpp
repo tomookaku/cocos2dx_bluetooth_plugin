@@ -14,14 +14,13 @@
 using namespace std;
 using namespace cocos2d;
 
+void *_delegate;
+
 extern "C" {
 
 	void setDelegateJni(void *delegate)
 	{
-		JniMethodInfo t;
-		if (JniHelper::getStaticMethodInfo(t, CLASS_NAME, "setDelegate", "(J)V")) {
-			t.env->CallStaticVoidMethod(t.classID, t.methodID, delegate);
-		}
+		_delegate = delegate;
 	}
 
 	void startJni(const char *peerID, const char *message)
@@ -45,12 +44,13 @@ extern "C" {
 	}
 
     // from BluetoothManager to CCBluetoothDelegate
-    JNIEXPORT void JNICALL Java_org_cocos2dx_lib_bluetooth_BluetoothManager_nativeCalledFromBluetoothManager(JNIEnv *env, jobject obj, jlong delegate, jint result, jint status, jstring error, jstring peerID, jstring message) {
-        if(delegate){
-            const char *arg1 = env->GetStringUTFChars(error, 0); 
-            const char *arg2 = env->GetStringUTFChars(peerID, 0); 
-            const char *arg3 = env->GetStringUTFChars(message, 0); 
-            bluetooth_plugin::CCBluetoothDelegate *bluetoorhDelegate = (bluetooth_plugin::CCBluetoothDelegate*)delegate; 
+    JNIEXPORT void JNICALL Java_org_cocos2dx_lib_bluetooth_BluetoothManager_nativeCalledFromBluetoothManager(JNIEnv *env, jobject thiz, jint result, jint status, jstring error, jstring peerID, jstring message) {
+        if(_delegate) {
+            const char *arg1 = env->GetStringUTFChars(error, NULL); 
+            const char *arg2 = env->GetStringUTFChars(peerID, NULL); 
+            const char *arg3 = env->GetStringUTFChars(message, NULL); 
+
+            bluetooth_plugin::CCBluetoothDelegate *bluetoorhDelegate = (bluetooth_plugin::CCBluetoothDelegate*)_delegate;
             bluetoorhDelegate->onResult(result, status, arg1, arg2, arg3);
         }
     }

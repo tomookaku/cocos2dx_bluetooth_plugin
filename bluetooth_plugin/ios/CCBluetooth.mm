@@ -3,11 +3,11 @@
 #import <CoreBluetooth/CoreBluetooth.h>
 #import <CoreLocation/CoreLocation.h>
 
-#define PROXIMITY_UUID     @"6E34F5FD-7229-4605-A98B-1EEE610D55AB"    // 任意のUUIDに変更してください
+#define PROXIMITY_UUID     @"6E34F5FD-7229-4605-A98B-1EEE610D55AB"
 
-// BluetoothManager
 @interface BluetoothManager : NSObject <CBPeripheralManagerDelegate, MCNearbyServiceAdvertiserDelegate, MCNearbyServiceBrowserDelegate, MCSessionDelegate, CLLocationManagerDelegate>
 {
+    // store c++ instance information related to this delegate
     void *object;
 }
 
@@ -16,16 +16,15 @@
 
 @end
 
-// BluetoothManager
 @implementation BluetoothManager
 {
 	MCNearbyServiceAdvertiser	*_nearbyServiceAdvertiser;
 	MCPeerID					*_peerID;
 	MCSession					*_session;
-
+    
     CBPeripheralManager			*_peripheralManager;
 	MCNearbyServiceBrowser      *_nearbyServiceBrowser;
-
+    
 	CLLocationManager           *_locationManager;
 	NSUUID                      *_uuid;
 	CLBeaconRegion              *_region;
@@ -43,7 +42,7 @@
         _uuid = [[NSUUID alloc] initWithUUIDString:PROXIMITY_UUID];
         _region = [[CLBeaconRegion alloc] initWithProximityUUID:_uuid identifier:[_uuid UUIDString]];
     }
-
+    
     return self;
 }
 
@@ -54,14 +53,14 @@
     _peerID = [[MCPeerID alloc] initWithDisplayName:peerID];
     _session = [[MCSession alloc] initWithPeer:_peerID];
     _session.delegate = (id<MCSessionDelegate>)self;
-
+    
     _peripheralManager = [[CBPeripheralManager alloc] initWithDelegate:self queue:dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)];
-
+    
     _locationManager = [[CLLocationManager alloc] init];
     _locationManager.delegate = self;
-
+    
     [_locationManager startRangingBeaconsInRegion:_region];
-
+    
     [self performSelector:@selector(startAdvertise) withObject:nil afterDelay:0.5];
 }
 
@@ -70,13 +69,13 @@
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(startAdvertise) object:nil];
 
     [self stopAdvertise];
-
+    
     if (_locationManager) {
         [_locationManager stopRangingBeaconsInRegion:_region];
         _locationManager.delegate = nil;
         _locationManager = nil;
     }
-
+    
     [self stopBrowsing];
 }
 
@@ -87,9 +86,8 @@
     NSString *error = [info objectForKey:@"error"];
     NSString *peerID = [info objectForKey:@"peerID"];
     NSString *message = [info objectForKey:@"message"];
-
+    
     bluetooth_plugin::CCBluetoothDelegate *pDelegate = (bluetooth_plugin::CCBluetoothDelegate*)object;
-
     if(pDelegate != NULL) {
         pDelegate->onResult([result intValue],
                             [status intValue],
@@ -102,14 +100,14 @@
 -(void)beaconing:(BOOL)flag
 {
     NSLog(@"beaconing: %d", flag);
-
+    
     NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:PROXIMITY_UUID];
     CLBeaconRegion *region = [[CLBeaconRegion alloc]
                               initWithProximityUUID:uuid
                               identifier:[uuid UUIDString]];
-
+	
     NSDictionary *peripheralData = [region peripheralDataWithMeasuredPower:nil];
-
+	
     if (flag)
         [_peripheralManager startAdvertising:peripheralData];
     else
@@ -119,9 +117,9 @@
 - (void)startAdvertise
 {
     NSLog(@"startAdvertise");
-
+    
     [self beaconing:YES];
-
+    
     NSDictionary *discoveryInfo = [[NSDictionary alloc] initWithObjectsAndKeys:[[UIDevice currentDevice] name], @"device name", nil];
     _nearbyServiceAdvertiser = [[MCNearbyServiceAdvertiser alloc] initWithPeer:_peerID discoveryInfo:discoveryInfo serviceType:@"connect-anyway"];
     _nearbyServiceAdvertiser.delegate = self;
@@ -131,17 +129,16 @@
 - (void)stopAdvertise
 {
     NSLog(@"stopAdvertise");
-
+    
     [self beaconing:NO];
-
+    
     [_nearbyServiceAdvertiser stopAdvertisingPeer];
 }
 
 - (void)advertiser:(MCNearbyServiceAdvertiser *)advertiser didNotStartAdvertisingPeer:(NSError *)error
 {
     NSLog(@"advertiser:didNotStartAdvertisingPeer");
-
-    if(error) {
+    if(error){
         NSLog(@"%@", [error localizedDescription]);
     }
 }
@@ -155,7 +152,7 @@
         NSLog(@"Already connected");
         [self performSelectorOnMainThread:@selector(communicateToPeer) withObject:nil waitUntilDone:NO];
     }
-
+	
     invitationHandler(([_session.connectedPeers count] == 0 ? YES : NO), _session);
 }
 
@@ -167,10 +164,10 @@
 - (void)sendMessage:(NSString *)message
 {
     NSLog(@"sendMessage: %@", message);
-
+    
     NSData *messageData = [message dataUsingEncoding:NSUTF8StringEncoding];
     NSError *error;
-
+    
     [_session sendData:messageData toPeers:_session.connectedPeers withMode:MCSessionSendDataReliable error:&error];
     if (error) {
         NSLog(@"Error sending message to peers [%@]", error);
@@ -194,7 +191,7 @@
 - (void)locationManager:(CLLocationManager *)manager didStartMonitoringForRegion:(CLRegion *)region
 {
     NSLog(@"locationManager:didStartMonitoringForRegion: %@", region.identifier);
-
+    
     [_locationManager requestStateForRegion:region];
 }
 
@@ -215,7 +212,7 @@
 - (void)locationManager:(CLLocationManager *)manager didDetermineState:(CLRegionState)state forRegion:(CLRegion *)region
 {
     NSLog(@"locationManager:didDetermineState: %@", region.identifier);
-
+    
     if ([region isKindOfClass:[CLBeaconRegion class]]) {
         switch (state) {
             case CLRegionStateInside:
@@ -296,13 +293,13 @@
     NSLog(@"Peer [%@] receive data (%@)", peerID.displayName, message);
 
     NSMutableDictionary *info = [[NSMutableDictionary alloc] init];
-
+    
     [info setObject:[NSNumber numberWithInt:RESULT_RECEIVE_MESSAGE] forKey:@"result"];
     [info setObject:[NSNumber numberWithInt:STATUS_OK] forKey:@"status"];
     [info setObject:@"" forKey:@"error"];
     [info setObject:peerID.displayName forKey:@"peerID"];
     [info setObject:message forKey:@"message"];
-
+    
     [self performSelectorOnMainThread:@selector(didChangeState:) withObject:info waitUntilDone:NO];
 }
 
@@ -323,11 +320,10 @@
 
 @end
 
-// bluetooth_plugin
 namespace bluetooth_plugin
 {
     BluetoothManager *_bluetooth = NULL;
-
+    
     CCBluetooth::CCBluetooth(CCBluetoothDelegate* delegate)
     {
         _bluetooth = [[BluetoothManager alloc] initWithDelegate:(void *)delegate];
@@ -342,14 +338,14 @@ namespace bluetooth_plugin
     void CCBluetooth::start(const char *peerID, const char *message)
     {
         NSLog(@"start");
-
+        
         [_bluetooth start:[NSString stringWithFormat:@"%s",  peerID]:[NSString stringWithFormat:@"%s",  message]];
     }
-
+    
     void CCBluetooth::stop()
     {
         NSLog(@"stop");
-
+        
         [_bluetooth stop];
     }
 }

@@ -3,8 +3,6 @@
 
 namespace bluetooth_plugin {
 
-static jobject _obj;
-
 CCBluetooth::CCBluetooth(CCBluetoothDelegate* delegate)
 {
 	setDelegateJni(delegate);
