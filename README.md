@@ -3,6 +3,8 @@ cocos2dx_bluetooth_plugin
 
 第４回Cocos2d-x勉強会で発表したpluginのソースコードです。
 
+Cocos2d-x 3.1対応のサンプルプロジェクトを用意しました。
+
 ## Cocos2d-x x iBeacon 
 * Bluetoothを使ったゲームを作ろう
 
